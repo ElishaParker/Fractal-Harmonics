@@ -2,25 +2,70 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Fractal Harmonics — Ripple Bloom</title>
+<title>Mic Visualizer Reset</title>
 <style>
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  #startBtn {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    background: #0f0; color: #000;
-    font-family: monospace;
-    font-size: 18px;
-    padding: 12px 24px;
-    border: none; border-radius: 8px;
-    cursor: pointer; z-index: 10;
-  }
-  #startBtn:hover { background: #7f7; }
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+canvas{width:100%;height:100%;display:block}
+#startBtn{
+  position:absolute;top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  background:#0f0;color:#000;font-family:monospace;
+  font-size:18px;padding:12px 24px;border:none;border-radius:8px;
+  cursor:pointer;z-index:10
+}
+#startBtn:hover{background:#7f7}
 </style>
 </head>
 <body>
-<button id="startBtn">🌊 Start Fractal Harmonics</button>
-<script type="module" src="./main.js"></script>
+<button id="startBtn">🎤 Start Mic Visualizer</button>
+<canvas id="canvas"></canvas>
+<script>
+const btn=document.getElementById('startBtn');
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let audioCtx,analyser,dataArray;
+
+btn.onclick=async()=>{
+  try{
+    btn.style.display='none';
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const source=audioCtx.createMediaStreamSource(stream);
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=256;
+    dataArray=new Uint8Array(analyser.frequencyBinCount);
+    source.connect(analyser);
+    resize();
+    window.onresize=resize;
+    draw();
+  }catch(e){
+    alert('Microphone access denied or unavailable');
+    console.error(e);
+    btn.style.display='block';
+  }
+};
+
+function resize(){
+  canvas.width=innerWidth;
+  canvas.height=innerHeight;
+}
+
+function draw(){
+  requestAnimationFrame(draw);
+  if(!analyser)return;
+  analyser.getByteFrequencyData(dataArray);
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  const barW=(canvas.width/dataArray.length)*1.5;
+  let x=0;
+  for(let i=0;i<dataArray.length;i++){
+    const h=dataArray[i];
+    const hue=(i/dataArray.length)*360;
+    ctx.fillStyle=`hsl(${hue},100%,50%)`;
+    ctx.fillRect(x,canvas.height-h,barW,h);
+    x+=barW+1;
+  }
+}
+</script>
 </body>
 </html>
