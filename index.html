@@ -2,18 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mic Visualizer Test</title>
+<title>Fractal Harmonics — Droplet Mode</title>
 <style>
   html, body {
     margin: 0;
     height: 100%;
     background: #000;
     overflow: hidden;
-  }
-  canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
   }
   #startBtn {
     position: absolute;
@@ -30,72 +25,134 @@
     cursor: pointer;
     z-index: 10;
   }
-  #startBtn:hover {
-    background: #7f7;
-  }
+  #startBtn:hover { background: #7f7; }
 </style>
 </head>
 <body>
-<button id="startBtn">🎤 Start Mic Visualizer</button>
-<canvas id="canvas"></canvas>
+<button id="startBtn">🎤 Start Droplet Visualizer</button>
 
-<script>
-const startBtn = document.getElementById('startBtn');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let audioCtx, analyser, dataArray;
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js';
 
-startBtn.addEventListener('click', async () => {
-  try {
-    startBtn.style.display = 'none';
-    await startMic();
-  } catch (e) {
-    console.error(e);
-    alert('Microphone access denied.');
-    startBtn.style.display = 'block';
-  }
-});
+let scene, camera, renderer, analyser, dataArray, droplet, material, audioCtx;
+let started = false;
 
-async function startMic() {
+// ---------- Initialize Scene ----------
+async function initScene() {
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.z = 3;
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const light = new THREE.PointLight(0xffffff, 1);
+  light.position.set(3, 3, 3);
+  scene.add(light);
+
+  const geo = new THREE.SphereGeometry(1, 128, 128);
+  material = new THREE.ShaderMaterial({
+    uniforms: {
+      iAudio: { value: 0.0 },
+      iColor: { value: new THREE.Color(0x00ffff) }
+    },
+    vertexShader: `
+      uniform float iAudio;
+      varying vec3 vNormal;
+      void main() {
+        vec3 displaced = position + normal * iAudio * 0.4;
+        vNormal = normal;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 iColor;
+      varying vec3 vNormal;
+      void main() {
+        float lighting = dot(normalize(vNormal), normalize(vec3(0.5, 0.5, 1.0)));
+        vec3 col = iColor * (0.3 + 0.7 * lighting);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `
+  });
+
+  droplet = new THREE.Mesh(geo, material);
+  scene.add(droplet);
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+}
+
+// ---------- Initialize Audio ----------
+async function initAudio() {
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const source = audioCtx.createMediaStreamSource(stream);
 
   analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 256;
-  const bufferLength = analyser.frequencyBinCount;
-  dataArray = new Uint8Array(bufferLength);
-
+  analyser.fftSize = 512;
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
   source.connect(analyser);
-
-  resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
-  draw();
 }
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+// ---------- Helpers ----------
+function getDominantFreq() {
+  analyser.getByteFrequencyData(dataArray);
+  const maxIndex = dataArray.indexOf(Math.max(...dataArray));
+  const freq = maxIndex * (audioCtx.sampleRate / analyser.fftSize);
+  const amplitude = Math.max(...dataArray) / 255;
+  return { freq, amplitude };
 }
 
-function draw() {
-  requestAnimationFrame(draw);
+function mapFreqToColor(freq) {
+  // Visible spectrum (approx 400–700 nm mapped to 380–780 THz range)
+  const ranges = [
+    { f: 396, color: new THREE.Color(0xff0000) }, // red
+    { f: 432, color: new THREE.Color(0xffa500) }, // orange
+    { f: 528, color: new THREE.Color(0x00ff00) }, // green
+    { f: 639, color: new THREE.Color(0x00ffff) }, // cyan
+    { f: 741, color: new THREE.Color(0x0000ff) }, // blue
+    { f: 852, color: new THREE.Color(0x8b00ff) }  // violet
+  ];
+  let result = ranges[0].color;
+  for (let i = 1; i < ranges.length; i++) {
+    if (freq < ranges[i].f) {
+      result = ranges[i - 1].color.clone().lerp(ranges[i].color, 0.5);
+      break;
+    }
+  }
+  return result;
+}
+
+// ---------- Animation ----------
+function animate() {
+  requestAnimationFrame(animate);
   if (!analyser) return;
 
-  analyser.getByteFrequencyData(dataArray);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const { freq, amplitude } = getDominantFreq();
+  const color = mapFreqToColor(freq);
+  material.uniforms.iAudio.value = amplitude * 2.0;
+  material.uniforms.iColor.value.copy(color);
 
-  const barWidth = (canvas.width / dataArray.length) * 1.5;
-  let x = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    const barHeight = dataArray[i];
-    const hue = (i / dataArray.length) * 360;
-    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
-    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
-    x += barWidth + 1;
-  }
+  droplet.rotation.y += 0.002;
+  droplet.rotation.x += 0.001;
+
+  renderer.render(scene, camera);
 }
+
+// ---------- Start ----------
+document.getElementById('startBtn').addEventListener('click', async () => {
+  if (started) return;
+  started = true;
+  document.getElementById('startBtn').style.display = 'none';
+  await initScene();
+  await initAudio();
+  animate();
+});
 </script>
 </body>
 </html>
