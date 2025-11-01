@@ -4,15 +4,33 @@ import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.161/examples
 let scene, camera, renderer, controls, clock;
 let fractalMat, mesh;
 let audioCtx, analyser, dataArray;
+let started = false;
 
-document.getElementById('startBtn').addEventListener('click', async () => {
-  document.getElementById('overlay').style.display = 'none';
-  await initScene();
-  await initAudio();
-  animate();
+// --- Wait for the DOM before wiring up the button ---
+window.addEventListener('DOMContentLoaded', () => {
+  console.log("✅ Fractal Harmonics: DOM ready");
+  const btn = document.getElementById('startBtn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      if (started) return;
+      started = true;
+      document.getElementById('overlay').style.display = 'none';
+      try {
+        await initScene();
+        await initAudio();
+        animate();
+      } catch (err) {
+        console.error("❌ Initialization failed:", err);
+        alert("Error starting Fractal Harmonics. Check console for details.");
+      }
+    });
+  } else {
+    console.error("❌ startBtn not found in DOM!");
+  }
 });
 
 async function initScene() {
+  console.log("🎨 Initializing scene...");
   const container = document.getElementById('viewport');
   scene = new THREE.Scene();
   clock = new THREE.Clock();
@@ -22,7 +40,7 @@ async function initScene() {
 
   renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(devicePixelRatio);
+  renderer.setPixelRatio(window.devicePixelRatio);
   container.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
@@ -48,16 +66,20 @@ async function initScene() {
   scene.add(mesh);
 
   window.addEventListener('resize', onResize);
+  console.log("✅ Scene initialized");
 }
 
 function onResize() {
+  if (!camera || !renderer || !fractalMat) return;
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   fractalMat.uniforms.iResolution.value.set(innerWidth, innerHeight, 1);
 }
 
+// --- AUDIO SETUP ---
 async function initAudio() {
+  console.log("🎧 Initializing audio...");
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 512;
@@ -65,19 +87,26 @@ async function initAudio() {
 
   let stream;
   try {
-    // try user-media first (prompts for mic)
+    // must be user gesture triggered (the Start button)
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    console.log("🎙️ Microphone access granted.");
   } catch (err) {
-    console.warn('Mic access denied — using audio element fallback.');
+    console.warn("⚠️ Mic access denied, using fallback audio element.");
     const player = document.getElementById('player');
-    player.play();
-    stream = player.captureStream();
+    if (player) {
+      player.play();
+      stream = player.captureStream();
+    } else {
+      throw new Error("No fallback <audio> element found.");
+    }
   }
 
   const source = audioCtx.createMediaStreamSource(stream);
   source.connect(analyser);
+  console.log("✅ Audio analyzer connected.");
 }
 
+// --- ANALYSIS HELPERS ---
 function getAudioLevel() {
   if (!analyser) return 0;
   analyser.getByteFrequencyData(dataArray);
@@ -86,16 +115,22 @@ function getAudioLevel() {
   return sum / dataArray.length / 255;
 }
 
+// --- MAIN LOOP ---
 function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
   const level = getAudioLevel();
 
-  fractalMat.uniforms.iTime.value = t;
-  fractalMat.uniforms.iAudio.value = level;
+  if (fractalMat) {
+    fractalMat.uniforms.iTime.value = t;
+    fractalMat.uniforms.iAudio.value = level;
+  }
 
-  mesh.rotation.y += 0.0015;
-  mesh.rotation.x += 0.0008;
-  controls.update();
-  renderer.render(scene, camera);
+  if (mesh) {
+    mesh.rotation.y += 0.0015;
+    mesh.rotation.x += 0.0008;
+  }
+
+  if (controls) controls.update();
+  if (renderer && scene && camera) renderer.render(scene, camera);
 }
