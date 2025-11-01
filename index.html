@@ -1,40 +1,101 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Device Audio Test</title>
+<title>Mic Visualizer Test</title>
 <style>
-body { background:#000; color:#0f0; font-family:monospace; text-align:center; }
-#bar { width:300px; height:20px; border:1px solid #0f0; margin:20px auto; background:#111; }
-#fill { height:100%; width:0%; background:#0f0; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+  }
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  #startBtn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #0f0;
+    color: #000;
+    font-family: monospace;
+    font-size: 18px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 10;
+  }
+  #startBtn:hover {
+    background: #7f7;
+  }
 </style>
 </head>
 <body>
-<h2>Speaker Output Test (via internal audio)</h2>
-<audio id="player" src="assets/test.mp3" controls autoplay loop></audio>
-<div id="bar"><div id="fill"></div></div>
+<button id="startBtn">🎤 Start Mic Visualizer</button>
+<canvas id="canvas"></canvas>
 
 <script>
-const player = document.getElementById('player');
-const fill = document.getElementById('fill');
+const startBtn = document.getElementById('startBtn');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let audioCtx, analyser, dataArray;
 
-player.addEventListener('play', async () => {
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const stream = player.captureStream(); // captures audio from this <audio> element
+startBtn.addEventListener('click', async () => {
+  try {
+    startBtn.style.display = 'none';
+    await startMic();
+  } catch (e) {
+    console.error(e);
+    alert('Microphone access denied.');
+    startBtn.style.display = 'block';
+  }
+});
+
+async function startMic() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   const source = audioCtx.createMediaStreamSource(stream);
-  const analyser = audioCtx.createAnalyser();
+
+  analyser = audioCtx.createAnalyser();
   analyser.fftSize = 256;
-  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  const bufferLength = analyser.frequencyBinCount;
+  dataArray = new Uint8Array(bufferLength);
+
   source.connect(analyser);
 
-  function animate() {
-    requestAnimationFrame(animate);
-    analyser.getByteFrequencyData(dataArray);
-    const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
-    fill.style.width = (avg/255*100).toFixed(1)+'%';
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  draw();
+}
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  if (!analyser) return;
+
+  analyser.getByteFrequencyData(dataArray);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const barWidth = (canvas.width / dataArray.length) * 1.5;
+  let x = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    const barHeight = dataArray[i];
+    const hue = (i / dataArray.length) * 360;
+    ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+    ctx.fillRect(x, canvas.height - barHeight, barWidth, barHeight);
+    x += barWidth + 1;
   }
-  animate();
-});
+}
 </script>
 </body>
 </html>
