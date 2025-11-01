@@ -1,83 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Audio Input Test</title>
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: #000;
-      color: #0f0;
-      font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    #bar {
-      width: 300px;
-      height: 20px;
-      background: #111;
-      border: 1px solid #0f0;
-      margin-top: 20px;
-    }
-    #fill {
-      height: 100%;
-      width: 0%;
-      background: #0f0;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Device Audio Test</title>
+<style>
+body { background:#000; color:#0f0; font-family:monospace; text-align:center; }
+#bar { width:300px; height:20px; border:1px solid #0f0; margin:20px auto; background:#111; }
+#fill { height:100%; width:0%; background:#0f0; }
+</style>
 </head>
 <body>
-  <button id="startBtn" style="padding:10px 20px;font-size:16px;cursor:pointer;">🎧 Start Audio Test</button>
-  <div id="bar"><div id="fill"></div></div>
+<h2>Speaker Output Test (via internal audio)</h2>
+<audio id="player" src="assets/test.mp3" controls autoplay loop></audio>
+<div id="bar"><div id="fill"></div></div>
 
-  <script>
-    const startBtn = document.getElementById('startBtn');
-    const fill = document.getElementById('fill');
-    let audioCtx, analyser, dataArray;
+<script>
+const player = document.getElementById('player');
+const fill = document.getElementById('fill');
 
-    startBtn.addEventListener('click', async () => {
-      try {
-        // 1. Create context
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+player.addEventListener('play', async () => {
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const stream = player.captureStream(); // captures audio from this <audio> element
+  const source = audioCtx.createMediaStreamSource(stream);
+  const analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 256;
+  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  source.connect(analyser);
 
-        // 2. Generate a simple sine tone
-        const osc = audioCtx.createOscillator();
-        osc.frequency.value = 440; // A4
-        const gain = audioCtx.createGain();
-        gain.gain.value = 0.1;
-        osc.connect(gain).connect(audioCtx.destination);
-        osc.start();
-
-        // 3. Get microphone input
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mic = audioCtx.createMediaStreamSource(stream);
-
-        // 4. Connect to analyser
-        analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 256;
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        mic.connect(analyser);
-
-        // 5. Start drawing
-        animate();
-        startBtn.disabled = true;
-        startBtn.innerText = "Audio Connected 🎶";
-      } catch (err) {
-        console.error("Error:", err);
-        alert("Audio initialization failed. Check mic permissions in browser.");
-      }
-    });
-
-    function animate() {
-      requestAnimationFrame(animate);
-      if (!analyser) return;
-      analyser.getByteFrequencyData(dataArray);
-      let avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
-      fill.style.width = (avg/255*100).toFixed(1) + '%';
-    }
-  </script>
+  function animate() {
+    requestAnimationFrame(animate);
+    analyser.getByteFrequencyData(dataArray);
+    const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
+    fill.style.width = (avg/255*100).toFixed(1)+'%';
+  }
+  animate();
+});
+</script>
 </body>
 </html>
