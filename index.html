@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Fractal Harmonics – Safe Reset</title>
+<title>Fractal Harmonics Visualizer</title>
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden}
 canvas{width:100%;height:100%;display:block}
@@ -15,12 +15,10 @@ canvas{width:100%;height:100%;display:block}
 }
 #modeMenu{
   position:absolute;top:10px;left:10px;
-  font-family:monospace;
-  font-size:14px;
+  font-family:monospace;font-size:14px;
   background:#111;color:#0f0;border:1px solid #0f0;
   padding:6px;border-radius:4px;
-  opacity:0;pointer-events:none;transition:opacity .3s;
-  z-index:20;
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:20;
 }
 #modeMenu.visible{opacity:1;pointer-events:auto;}
 </style>
@@ -30,9 +28,17 @@ canvas{width:100%;height:100%;display:block}
   <option value="bars">Bars</option>
   <option value="wave">Waveform</option>
   <option value="circle">Circular Spectrum</option>
+  <option value="spiral">Spiral</option>
+  <option value="particles">Particle Burst</option>
+  <option value="aurora">Aurora Flow</option>
+  <option value="lissajous">Lissajous Pattern</option>
+  <option value="mandelbrot">Mandelbrot</option>
+  <option value="kaleidoscope">Kaleidoscope</option>
+  <option value="fractal">Fractal Recursion</option>
 </select>
 <button id="startBtn">🎤 Start Fractal Harmonics</button>
 <canvas id="canvas"></canvas>
+
 <script>
 const btn=document.getElementById('startBtn');
 const canvas=document.getElementById('canvas');
@@ -44,26 +50,20 @@ menu.onchange=()=>mode=menu.value;
 
 btn.onclick=async()=>{
   try{
-    console.log('Button clicked.');
-    if(!audioCtx){
-      audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-      await audioCtx.resume(); // required by Chrome autoplay policy
-    }
-    console.log('AudioContext created.');
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    await audioCtx.resume();
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    console.log('Microphone stream ready.');
     const source=audioCtx.createMediaStreamSource(stream);
     analyser=audioCtx.createAnalyser();
-    analyser.fftSize=256;
+    analyser.fftSize=512;
     dataArray=new Uint8Array(analyser.frequencyBinCount);
-    source.connect(analyser);
     btn.style.display='none';
     menu.classList.add('visible');
     resize();
     window.onresize=resize;
     draw();
   }catch(e){
-    alert('Microphone permission denied or unavailable.');
+    alert('Microphone access denied or unavailable');
     console.error(e);
   }
 };
@@ -76,26 +76,30 @@ function draw(){
   analyser.getByteFrequencyData(dataArray);
   ctx.fillStyle='rgba(0,0,0,0.25)';
   ctx.fillRect(0,0,canvas.width,canvas.height);
-
   switch(mode){
     case 'bars': drawBars(); break;
     case 'wave': drawWave(); break;
     case 'circle': drawCircle(); break;
+    case 'spiral': drawSpiral(); break;
+    case 'particles': drawParticles(); break;
+    case 'aurora': drawAurora(); break;
+    case 'lissajous': drawLissajous(); break;
+    case 'mandelbrot': drawMandelbrot(); break;
+    case 'kaleidoscope': drawKaleidoscope(); break;
+    case 'fractal': drawFractalRecursion(); break;
   }
 }
 
+// --- existing modes ---
 function drawBars(){
-  const barW=(canvas.width/dataArray.length)*1.5;
-  let x=0;
+  const barW=(canvas.width/dataArray.length)*1.5;let x=0;
   for(let i=0;i<dataArray.length;i++){
-    const h=dataArray[i];
-    const hue=(i/dataArray.length)*360;
+    const h=dataArray[i],hue=(i/dataArray.length)*360;
     ctx.fillStyle=`hsl(${hue},100%,50%)`;
     ctx.fillRect(x,canvas.height-h,barW,h);
     x+=barW+1;
   }
 }
-
 function drawWave(){
   analyser.getByteTimeDomainData(dataArray);
   ctx.beginPath();ctx.lineWidth=2;ctx.strokeStyle='#0f0';
@@ -106,7 +110,6 @@ function drawWave(){
   }
   ctx.stroke();
 }
-
 function drawCircle(){
   const cx=canvas.width/2,cy=canvas.height/2,r=150;
   for(let i=0;i<dataArray.length;i++){
@@ -118,6 +121,99 @@ function drawCircle(){
     ctx.strokeStyle=`hsl(${hue},100%,50%)`;
     ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   }
+}
+
+// --- new modes ---
+function drawSpiral(){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  ctx.beginPath();
+  for(let i=0;i<dataArray.length;i++){
+    const a=i*0.1,rad=2*i+(dataArray[i]/255)*100;
+    const x=cx+Math.cos(a)*rad,y=cy+Math.sin(a)*rad;
+    const hue=(i/dataArray.length)*360;
+    ctx.fillStyle=`hsl(${hue},100%,50%)`;
+    ctx.fillRect(x,y,2,2);
+  }
+}
+
+function drawParticles(){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  for(let i=0;i<dataArray.length;i++){
+    const angle=Math.random()*Math.PI*2;
+    const dist=(dataArray[i]/255)*canvas.width/2;
+    const x=cx+Math.cos(angle)*dist,y=cy+Math.sin(angle)*dist;
+    ctx.fillStyle=`hsl(${(i/dataArray.length)*360},100%,50%)`;
+    ctx.fillRect(x,y,3,3);
+  }
+}
+
+function drawAurora(){
+  const grad=ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+  grad.addColorStop(0,'hsl('+(Math.random()*360)+',100%,50%)');
+  grad.addColorStop(1,'hsl('+(Math.random()*360)+',100%,30%)');
+  ctx.fillStyle=grad;
+  ctx.globalAlpha=0.1;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.globalAlpha=1;
+}
+
+function drawLissajous(){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  ctx.beginPath();
+  for(let i=0;i<dataArray.length;i++){
+    const x=cx+Math.sin(i*0.02)*200;
+    const y=cy+Math.sin(i*0.03+(dataArray[i]/255)*2)*200;
+    const hue=(i/dataArray.length)*360;
+    ctx.strokeStyle=`hsl(${hue},100%,50%)`;
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+function drawMandelbrot(){
+  const level=dataArray[10]/255*2.5;
+  const w=canvas.width,h=canvas.height,img=ctx.createImageData(w,h);
+  for(let x=0;x<w;x+=3){
+    for(let y=0;y<h;y+=3){
+      let a=(x-w/2)/w*3.5,b=(y-h/2)/h*2.0;
+      const ca=a,cb=b;
+      let n=0;
+      while(n<20){
+        const aa=a*a-b*b;
+        const bb=2*a*b;
+        a=aa+ca;b=bb+cb;
+        if(Math.abs(a+b)>2)break;
+        n++;
+      }
+      const color=Math.floor(255*(n/20)*level);
+      ctx.fillStyle=`rgb(${color},${color/2},${255-color})`;
+      ctx.fillRect(x,y,3,3);
+    }
+  }
+}
+
+function drawKaleidoscope(){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  const slice=360/12;
+  for(let i=0;i<12;i++){
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate((slice*i*Math.PI)/180);
+    drawWave();
+    ctx.restore();
+  }
+}
+
+function drawFractalRecursion(depth=0,x=canvas.width/2,y=canvas.height/2,size=200){
+  if(depth>4)return;
+  const amp=dataArray[(depth*10)%dataArray.length]/255;
+  const hue=amp*360;
+  ctx.strokeStyle=`hsl(${hue},100%,50%)`;
+  ctx.beginPath();
+  ctx.arc(x,y,size*amp,0,Math.PI*2);
+  ctx.stroke();
+  drawFractalRecursion(depth+1,x+size*amp/2,y,size/2);
+  drawFractalRecursion(depth+1,x-size*amp/2,y,size/2);
 }
 </script>
 </body>
