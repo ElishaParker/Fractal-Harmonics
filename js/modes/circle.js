@@ -1,4 +1,4 @@
-export function drawCircle(ctx, dataArray, canvas, hue, saturation, brightness, scale) {
+export function drawCircle(ctx, dataArray, canvas, hue, saturation, brightness, scale, color) {
   const cx = canvas.width / 2;
   const cy = canvas.height / 2;
   const r = 150 * scale;
@@ -10,8 +10,8 @@ export function drawCircle(ctx, dataArray, canvas, hue, saturation, brightness, 
     const y1 = cy + Math.sin(a) * r;
     const x2 = cx + Math.cos(a) * (r + amp);
     const y2 = cy + Math.sin(a) * (r + amp);
-    const color = `hsl(${(i / dataArray.length) * 360 + hue}, ${saturation}%, ${brightness}%)`;
-    ctx.strokeStyle = color;
+
+    ctx.strokeStyle = color || `hsl(${(i / dataArray.length) * 360 + hue}, ${saturation}%, ${brightness}%)`;
     ctx.beginPath();
     ctx.moveTo(x1, y1);
     ctx.lineTo(x2, y2);
