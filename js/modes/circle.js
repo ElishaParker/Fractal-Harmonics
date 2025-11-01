@@ -1,0 +1,1 @@
+// circular spectrum visual effect placeholder
