@@ -1,7 +1,7 @@
-export function drawWave(ctx, dataArray, canvas, hue, saturation, brightness, scale) {
+export function drawWave(ctx, dataArray, canvas, hue, saturation, brightness, scale, color) {
   ctx.beginPath();
   ctx.lineWidth = 2 * scale;
-  ctx.strokeStyle = `hsl(${hue}, ${saturation}%, ${brightness}%)`;
+  ctx.strokeStyle = color || `hsl(${hue}, ${saturation}%, ${brightness}%)`;
   const slice = canvas.width / dataArray.length;
 
   for (let i = 0; i < dataArray.length; i++) {
