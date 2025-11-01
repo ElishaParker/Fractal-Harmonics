@@ -3,11 +3,10 @@ precision highp float;
 #endif
 
 uniform float iTime;
-uniform vec3 iResolution;
+uniform vec3  iResolution;
 uniform float iAudio;
-varying vec3 vPos;
+varying vec3  vPos;
 
-// simple 3D bulb style color modulation (not full raymarch)
 float mandelVal(vec3 p) {
   vec3 z = p;
   float dr = 1.0;
@@ -30,8 +29,8 @@ float mandelVal(vec3 p) {
 
 void main() {
   float r = mandelVal(normalize(vPos) * (1.5 + iAudio * 0.5));
-  float hue = fract(0.5 + 0.3 * sin(iTime*0.3) + iAudio*0.6);
-  vec3 col = vec3(hue, r*0.4, 1.0 - r*0.2);
+  float hue = fract(0.5 + 0.3 * sin(iTime * 0.3) + iAudio * 0.6);
+  vec3 col = vec3(hue, r * 0.4, 1.0 - r * 0.2);
   col = pow(col, vec3(0.8));
   gl_FragColor = vec4(col, 1.0);
 }
