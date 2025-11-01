@@ -108,5 +108,16 @@ function animate() {
   requestAnimationFrame(animate);
   if (!analyser) return;
 
-  const { freq, amplitude } = get
+  const { freq, amplitude } = getDominantFreq();
+  const color = mapFreqToColor(freq);
 
+  material.uniforms.iTime.value = clock.getElapsedTime();
+  material.uniforms.iAudio.value = amplitude * 2.0;
+  material.uniforms.iColor.value.copy(color);
+
+  droplet.rotation.y += 0.002;
+  droplet.rotation.x += 0.001;
+
+  bloomPass.strength = 1.0 + amplitude * 2.0;
+  composer.render();
+}
