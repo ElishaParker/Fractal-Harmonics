@@ -1,175 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Fractal Harmonics – Modular Core</title>
-<link rel="stylesheet" href="./css/controller.css">
-<style>
-html,body {
-  margin:0;
-  height:100%;
-  background:#000;
-  overflow:hidden;
-}
-canvas {
-  width:100%;
-  height:100%;
-  display:block;
-}
-#startBtn {
-  position:absolute;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  background:#0f0;
-  color:#000;
-  font-family:monospace;
-  font-size:18px;
-  padding:12px 24px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  z-index:10;
-}
-#modeMenu {
-  position:absolute;
-  top:10px;
-  left:10px;
-  font-family:monospace;
-  font-size:14px;
-  background:#111;
-  color:#0f0;
-  border:1px solid #0f0;
-  padding:6px;
-  border-radius:4px;
-  opacity:0;
-  pointer-events:none;
-  transition:opacity .3s;
-  z-index:20;
-}
-#modeMenu.visible {
-  opacity:1;
-  pointer-events:auto;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>Fractal Harmonics – Core Visualizer</title>
+  <link rel="stylesheet" href="./css/controller.css">
+  <link rel="stylesheet" href="./css/style.css">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #startBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #0f0;
+      color: #000;
+      font-family: monospace;
+      font-size: 18px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      z-index: 10;
+    }
+    #modeMenu {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-family: monospace;
+      font-size: 14px;
+      background: #111;
+      color: #0f0;
+      border: 1px solid #0f0;
+      padding: 6px;
+      border-radius: 4px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .3s;
+      z-index: 20;
+    }
+    #modeMenu.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
 </head>
 
 <body>
-<select id="modeMenu">
-  <option value="bars">Bars</option>
-  <option value="wave">Waveform</option>
-  <option value="circle">Circular Spectrum</option>
-</select>
+  <select id="modeMenu">
+    <option value="bars">Bars</option>
+    <option value="wave">Waveform</option>
+    <option value="circle">Circular Spectrum</option>
+  </select>
 
-<button id="startBtn">🎤 Start Fractal Harmonics</button>
-<canvas id="canvas"></canvas>
+  <button id="startBtn">🎤 Start Fractal Harmonics</button>
+  <canvas id="canvas"></canvas>
 
-<script>
-const btn = document.getElementById('startBtn');
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const menu = document.getElementById('modeMenu');
-let audioCtx, analyser, dataArray, mode = 'bars';
-
-// expose globals so core.js can attach
-window.analyser = null;
-window.dataArray = null;
-
-menu.onchange = () => mode = menu.value;
-
-btn.onclick = async () => {
-  try {
-    console.log('🎧 Start button clicked');
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      await audioCtx.resume();
-    }
-
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const source = audioCtx.createMediaStreamSource(stream);
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 256;
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
-    source.connect(analyser);
-
-    // expose to global scope
-    window.analyser = analyser;
-    window.dataArray = dataArray;
-
-    btn.style.display = 'none';
-    menu.classList.add('visible');
-    resize();
-    window.onresize = resize;
-    draw();
-
-  } catch (e) {
-    alert('Microphone permission denied or unavailable.');
-    console.error(e);
-  }
-};
-
-function resize() {
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
-}
-
-function draw() {
-  requestAnimationFrame(draw);
-  if (!analyser) return;
-  analyser.getByteFrequencyData(dataArray);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  switch (mode) {
-    case 'bars': drawBars(); break;
-    case 'wave': drawWave(); break;
-    case 'circle': drawCircle(); break;
-  }
-}
-
-function drawBars() {
-  const barW = (canvas.width / dataArray.length) * 1.5;
-  let x = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    const h = dataArray[i];
-    const hue = (i / dataArray.length) * 360;
-    ctx.fillStyle = `hsl(${hue},100%,50%)`;
-    ctx.fillRect(x, canvas.height - h, barW, h);
-    x += barW + 1;
-  }
-}
-
-function drawWave() {
-  analyser.getByteTimeDomainData(dataArray);
-  ctx.beginPath();
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = '#0f0';
-  const slice = canvas.width / dataArray.length;
-  for (let i = 0; i < dataArray.length; i++) {
-    const y = (dataArray[i] / 128) * canvas.height / 2;
-    i === 0 ? ctx.moveTo(0, y) : ctx.lineTo(i * slice, y);
-  }
-  ctx.stroke();
-}
-
-function drawCircle() {
-  const cx = canvas.width / 2, cy = canvas.height / 2, r = 150;
-  for (let i = 0; i < dataArray.length; i++) {
-    const a = (i / dataArray.length) * Math.PI * 2;
-    const amp = dataArray[i] / 255 * 150;
-    const x1 = cx + Math.cos(a) * r, y1 = cy + Math.sin(a) * r;
-    const x2 = cx + Math.cos(a) * (r + amp), y2 = cy + Math.sin(a) * (r + amp);
-    const hue = (i / dataArray.length) * 360;
-    ctx.strokeStyle = `hsl(${hue},100%,50%)`;
-    ctx.beginPath();
-    ctx.moveTo(x1, y1);
-    ctx.lineTo(x2, y2);
-    ctx.stroke();
-  }
-}
-</script>
-
-<!-- Load modular controller system -->
-<script type="module" src="./js/core.js"></script>
+  <!-- Core Script -->
+  <script type="module" src="./js/core.js?v=3"></script>
 </body>
 </html>
