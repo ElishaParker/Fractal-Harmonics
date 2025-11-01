@@ -1,1 +1,17 @@
-/* overlay controller styling */
+#controllerOverlay {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  width: 260px;
+  background: rgba(20,20,20,0.9);
+  border: 1px solid #0f0;
+  border-radius: 8px;
+  color: #0f0;
+  font-family: monospace;
+  padding: 12px;
+  z-index: 50;
+}
+#controllerOverlay h3 { margin:0 0 10px 0; }
+.sliderGroup { margin-bottom: 12px; }
+input[type=range] { width: 100%; }
+input[type=color] { width: 100%; height: 32px; border:none; margin-top:6px; }
