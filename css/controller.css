@@ -1,16 +1,56 @@
-#controllerOverlay{
-  position:fixed;
-  right:20px;
-  top:20px;
-  width:250px;
-  background:rgba(20,20,20,0.9);
-  border:1px solid #0f0;
-  border-radius:8px;
-  color:#0f0;
-  font-family:monospace;
-  padding:10px;
-  z-index:50;
+#controllerPanel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 250px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid #00ff00;
+  border-radius: 8px;
+  color: #00ff00;
+  font-family: monospace;
+  font-size: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 0 10px #00ff00;
+  z-index: 30;
 }
-.sliderGroup{margin-bottom:10px;}
-input[type=range]{width:100%;}
-input[type=color]{width:100%;height:32px;border:none;margin-top:4px;}
+
+#controllerPanel h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  text-align: left;
+  color: #00ff00;
+}
+
+#controllerPanel label {
+  display: block;
+  margin-top: 6px;
+}
+
+#controllerPanel input[type="range"] {
+  width: 100%;
+  appearance: none;
+  height: 4px;
+  border-radius: 3px;
+  background: #111;
+  outline: none;
+  margin-bottom: 5px;
+}
+
+#controllerPanel input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #00ff00;
+  cursor: pointer;
+}
+
+#controllerPanel input[type="color"] {
+  width: 100%;
+  height: 25px;
+  margin-top: 5px;
+  border: 1px solid #00ff00;
+  border-radius: 4px;
+  background: #111;
+  cursor: pointer;
+}
