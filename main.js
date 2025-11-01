@@ -6,7 +6,7 @@ let fractalMat, mesh;
 let audioCtx, analyser, dataArray;
 let started = false;
 
-// --- Wait for the DOM before wiring up the button ---
+// --- Wait for DOM to load ---
 window.addEventListener('DOMContentLoaded', () => {
   console.log("✅ Fractal Harmonics: DOM ready");
   const btn = document.getElementById('startBtn');
@@ -21,16 +21,15 @@ window.addEventListener('DOMContentLoaded', () => {
         animate();
       } catch (err) {
         console.error("❌ Initialization failed:", err);
-        alert("Error starting Fractal Harmonics. Check console for details.");
+        alert("Error starting Fractal Harmonics. See console for details.");
       }
     });
-  } else {
-    console.error("❌ startBtn not found in DOM!");
   }
 });
 
+// --- Initialize Scene ---
 async function initScene() {
-  console.log("🎨 Initializing scene...");
+  console.log("🎨 Initializing Three.js scene...");
   const container = document.getElementById('viewport');
   scene = new THREE.Scene();
   clock = new THREE.Clock();
@@ -49,8 +48,10 @@ async function initScene() {
   controls.minDistance = 1;
   controls.maxDistance = 10;
 
-  const vert = await fetch('shaders/pass.vert').then(r => r.text());
-  const frag = await fetch('shaders/fractal.frag').then(r => r.text());
+  // load shaders
+  const vert = await fetch('./shaders/pass.vert').then(r => r.text());
+  const frag = await fetch('./shaders/fractal.frag').then(r => r.text());
+
   fractalMat = new THREE.ShaderMaterial({
     vertexShader: vert,
     fragmentShader: frag,
@@ -66,7 +67,7 @@ async function initScene() {
   scene.add(mesh);
 
   window.addEventListener('resize', onResize);
-  console.log("✅ Scene initialized");
+  console.log("✅ Scene initialized successfully");
 }
 
 function onResize() {
@@ -77,7 +78,7 @@ function onResize() {
   fractalMat.uniforms.iResolution.value.set(innerWidth, innerHeight, 1);
 }
 
-// --- AUDIO SETUP ---
+// --- Audio setup ---
 async function initAudio() {
   console.log("🎧 Initializing audio...");
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -87,14 +88,14 @@ async function initAudio() {
 
   let stream;
   try {
-    // must be user gesture triggered (the Start button)
+    // prompts for mic
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     console.log("🎙️ Microphone access granted.");
   } catch (err) {
-    console.warn("⚠️ Mic access denied, using fallback audio element.");
+    console.warn("⚠️ Mic denied — using audio fallback (assets/test.mp3)");
     const player = document.getElementById('player');
     if (player) {
-      player.play();
+      await player.play();
       stream = player.captureStream();
     } else {
       throw new Error("No fallback <audio> element found.");
@@ -103,10 +104,10 @@ async function initAudio() {
 
   const source = audioCtx.createMediaStreamSource(stream);
   source.connect(analyser);
-  console.log("✅ Audio analyzer connected.");
+  console.log("✅ Audio analyzer ready");
 }
 
-// --- ANALYSIS HELPERS ---
+// --- Helper: Get audio level ---
 function getAudioLevel() {
   if (!analyser) return 0;
   analyser.getByteFrequencyData(dataArray);
@@ -115,7 +116,7 @@ function getAudioLevel() {
   return sum / dataArray.length / 255;
 }
 
-// --- MAIN LOOP ---
+// --- Animation Loop ---
 function animate() {
   requestAnimationFrame(animate);
   const t = clock.getElapsedTime();
@@ -131,6 +132,6 @@ function animate() {
     mesh.rotation.x += 0.0008;
   }
 
-  if (controls) controls.update();
-  if (renderer && scene && camera) renderer.render(scene, camera);
+  controls.update();
+  renderer.render(scene, camera);
 }
