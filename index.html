@@ -2,59 +2,82 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Fractal Harmonics</title>
-  <link rel="icon" href="data:,">
+  <title>Audio Input Test</title>
   <style>
     html, body {
+      height: 100%;
       margin: 0;
-      height: 100%;
-      overflow: hidden;
       background: #000;
-      font-family: monospace;
       color: #0f0;
-    }
-    #viewport {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      inset: 0;
-    }
-    #overlay {
-      position: absolute;
-      inset: 0;
+      font-family: monospace;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at center, #001 0%, #000 80%);
-      z-index: 10;
     }
-    #startBtn {
-      background: #00ff00;
-      color: #000;
-      padding: 14px 28px;
-      font-size: 18px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
+    #bar {
+      width: 300px;
+      height: 20px;
+      background: #111;
+      border: 1px solid #0f0;
+      margin-top: 20px;
     }
-    #startBtn:hover {
-      background: #7fff7f;
-      transform: scale(1.05);
+    #fill {
+      height: 100%;
+      width: 0%;
+      background: #0f0;
     }
-    #player { display: none; }
   </style>
 </head>
 <body>
-  <div id="viewport"></div>
+  <button id="startBtn" style="padding:10px 20px;font-size:16px;cursor:pointer;">🎧 Start Audio Test</button>
+  <div id="bar"><div id="fill"></div></div>
 
-  <div id="overlay">
-    <button id="startBtn">Start Fractal Harmonics 🎧</button>
-  </div>
+  <script>
+    const startBtn = document.getElementById('startBtn');
+    const fill = document.getElementById('fill');
+    let audioCtx, analyser, dataArray;
 
-  <!-- optional fallback audio -->
-  <audio id="player" src="assets/test.mp3" controls></audio>
+    startBtn.addEventListener('click', async () => {
+      try {
+        // 1. Create context
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-  <script type="module" src="./main.js"></script>
+        // 2. Generate a simple sine tone
+        const osc = audioCtx.createOscillator();
+        osc.frequency.value = 440; // A4
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0.1;
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start();
+
+        // 3. Get microphone input
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mic = audioCtx.createMediaStreamSource(stream);
+
+        // 4. Connect to analyser
+        analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+        mic.connect(analyser);
+
+        // 5. Start drawing
+        animate();
+        startBtn.disabled = true;
+        startBtn.innerText = "Audio Connected 🎶";
+      } catch (err) {
+        console.error("Error:", err);
+        alert("Audio initialization failed. Check mic permissions in browser.");
+      }
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (!analyser) return;
+      analyser.getByteFrequencyData(dataArray);
+      let avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length;
+      fill.style.width = (avg/255*100).toFixed(1) + '%';
+    }
+  </script>
 </body>
 </html>
