@@ -31,7 +31,7 @@ btn.onclick = async () => {
     btn.style.display = "none";
     menu.classList.add("visible");
 
-    initController(); // initializes overlay controls
+    initController(); // initialize overlay controls
     resize();
     window.onresize = resize;
     draw();
@@ -54,17 +54,19 @@ function draw() {
   ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const { hue, saturation, brightness, scale } = getControllerValues();
+  // pull all live control values
+  const { hue, saturation, brightness, scale, color } = getControllerValues();
 
+  // pass color into each visual mode so it can override the HSL spectrum
   switch (mode) {
     case "bars":
-      drawBars(ctx, dataArray, canvas, hue, saturation, brightness, scale);
+      drawBars(ctx, dataArray, canvas, hue, saturation, brightness, scale, color);
       break;
     case "wave":
-      drawWave(ctx, dataArray, canvas, hue, saturation, brightness, scale);
+      drawWave(ctx, dataArray, canvas, hue, saturation, brightness, scale, color);
       break;
     case "circle":
-      drawCircle(ctx, dataArray, canvas, hue, saturation, brightness, scale);
+      drawCircle(ctx, dataArray, canvas, hue, saturation, brightness, scale, color);
       break;
   }
 }
