@@ -1,61 +1,70 @@
-// Fractal Harmonics – Core Integration Layer
-// Hooks controller overlay into Benchmark 1 visualizer
-// and syncs with the existing mic + analyser pipeline
+import { drawBars } from "./modes/bars.js";
+import { drawWave } from "./modes/wave.js";
+import { drawCircle } from "./modes/circle.js";
+import { initController, getControllerValues } from "./controller.js";
 
-import { Controller } from './controller.js';
-import * as Bars from './modes/bars.js';
-import * as Wave from './modes/wave.js';
-import * as Circle from './modes/circle.js';
+const btn = document.getElementById("startBtn");
+const menu = document.getElementById("modeMenu");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-let currentMode = Bars;
-let ctx, analyser, dataArray, menu;
+let audioCtx, analyser, dataArray, mode = "bars";
 
-// Wait until the benchmark’s visualizer is active
-window.addEventListener('load', () => {
-  console.log("🎛 Fractal Harmonics Controller initializing...");
+menu.onchange = () => (mode = menu.value);
 
-  // Get shared objects created by Benchmark 1
-  ctx = document.getElementById('canvas').getContext('2d');
-  menu = document.getElementById('modeMenu');
-  analyser = window.analyser || null;
-  dataArray = window.dataArray || null;
-
-  if (!ctx) {
-    console.error("❌ Canvas context not found. Make sure Benchmark 1 is loaded.");
-    return;
-  }
-
-  // Create the controller overlay UI
-  Controller.init();
-  Controller.setTarget(currentMode);
-
-  // Handle dropdown changes
-  menu.addEventListener('change', () => {
-    switch (menu.value) {
-      case 'bars': currentMode = Bars; break;
-      case 'wave': currentMode = Wave; break;
-      case 'circle': currentMode = Circle; break;
-      default: currentMode = Bars; break;
+btn.onclick = async () => {
+  try {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      await audioCtx.resume();
     }
-    Controller.setTarget(currentMode);
-  });
 
-  // Start animation loop that draws using controller settings
-  loop();
-});
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const source = audioCtx.createMediaStreamSource(stream);
 
-// Continuous animation loop
-function loop() {
-  requestAnimationFrame(loop);
-  if (!ctx || !analyser || !dataArray) return;
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-  // get frequency data from benchmark analyser
+    source.connect(analyser);
+
+    btn.style.display = "none";
+    menu.classList.add("visible");
+
+    initController(); // initializes overlay controls
+    resize();
+    window.onresize = resize;
+    draw();
+  } catch (e) {
+    alert("🎤 Microphone permission denied or unavailable.");
+    console.error("Audio Error:", e);
+  }
+};
+
+function resize() {
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+
+function draw() {
+  requestAnimationFrame(draw);
+  if (!analyser) return;
+
   analyser.getByteFrequencyData(dataArray);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.25)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // clear overlay fade
-  ctx.fillStyle = 'rgba(0,0,0,0.25)';
-  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  const { hue, saturation, brightness, scale } = getControllerValues();
 
-  // draw active mode
-  currentMode.draw(ctx, dataArray, Controller.settings);
+  switch (mode) {
+    case "bars":
+      drawBars(ctx, dataArray, canvas, hue, saturation, brightness, scale);
+      break;
+    case "wave":
+      drawWave(ctx, dataArray, canvas, hue, saturation, brightness, scale);
+      break;
+    case "circle":
+      drawCircle(ctx, dataArray, canvas, hue, saturation, brightness, scale);
+      break;
+  }
 }
