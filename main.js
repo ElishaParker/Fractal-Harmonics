@@ -1,5 +1,5 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.161/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.161/examples/jsm/controls/OrbitControls.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/controls/OrbitControls.js';
 
 let scene, camera, renderer, controls, clock;
 let fractalMat, mesh;
@@ -48,9 +48,15 @@ async function initScene() {
   controls.minDistance = 1;
   controls.maxDistance = 10;
 
-  // load shaders
-  const vert = await fetch('./shaders/pass.vert').then(r => r.text());
-  const frag = await fetch('./shaders/fractal.frag').then(r => r.text());
+  // GitHub Pages often serves repos as /Fractal-Harmonics/
+  // Ensure paths are relative to the current HTML
+  const base = window.location.pathname.replace(/\/[^/]*$/, '');
+  const vertPath = `${base}/shaders/pass.vert`;
+  const fragPath = `${base}/shaders/fractal.frag`;
+
+  console.log("Loading shaders from:", vertPath, fragPath);
+  const vert = await fetch(vertPath).then(r => r.text());
+  const frag = await fetch(fragPath).then(r => r.text());
 
   fractalMat = new THREE.ShaderMaterial({
     vertexShader: vert,
