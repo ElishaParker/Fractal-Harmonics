@@ -21,7 +21,9 @@ canvas{width:100%;height:100%;display:block}
   font-size:14px;
   background:#111;color:#0f0;border:1px solid #0f0;
   padding:6px;border-radius:4px;
+  opacity:0;pointer-events:none;transition:opacity 0.3s ease;
 }
+#modeMenu.visible{opacity:1;pointer-events:auto;}
 </style>
 </head>
 <body>
@@ -41,13 +43,16 @@ const btn=document.getElementById('startBtn');
 const canvas=document.getElementById('canvas');
 const ctx=canvas.getContext('2d');
 const menu=document.getElementById('modeMenu');
-let audioCtx,analyser,dataArray,mode='bars';
+let audioCtx,analyser,dataArray,mode='bars',started=false;
 
 menu.onchange=()=>mode=menu.value;
 
 btn.onclick=async()=>{
+  if(started) return;
+  started=true;
   try{
     btn.style.display='none';
+    menu.classList.add('visible');
     audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     const source=audioCtx.createMediaStreamSource(stream);
@@ -64,7 +69,10 @@ btn.onclick=async()=>{
   }
 };
 
-function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+function resize(){
+  canvas.width=innerWidth;
+  canvas.height=innerHeight;
+}
 
 function draw(){
   requestAnimationFrame(draw);
